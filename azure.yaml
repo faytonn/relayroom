@@ -1,0 +1,38 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+name: relayroom
+metadata:
+  template: aspire-full
+services:
+  app:
+    language: dotnet
+    project: ./src/RelayRoom.AppHost/RelayRoom.AppHost.csproj
+    host: containerapp
+hooks:
+  preprovision:
+    windows:
+      shell: pwsh
+      run: ./scripts/prepare-web-for-api.ps1
+      continueOnError: false
+    posix:
+      shell: sh
+      run: |
+        corepack pnpm --dir src/RelayRoom.Web install --frozen-lockfile
+        corepack pnpm --dir src/RelayRoom.Web build
+        rm -rf src/RelayRoom.Api/wwwroot
+        mkdir -p src/RelayRoom.Api/wwwroot
+        cp -R src/RelayRoom.Web/dist/. src/RelayRoom.Api/wwwroot/
+      continueOnError: false
+  predeploy:
+    windows:
+      shell: pwsh
+      run: ./scripts/prepare-web-for-api.ps1
+      continueOnError: false
+    posix:
+      shell: sh
+      run: |
+        corepack pnpm --dir src/RelayRoom.Web install --frozen-lockfile
+        corepack pnpm --dir src/RelayRoom.Web build
+        rm -rf src/RelayRoom.Api/wwwroot
+        mkdir -p src/RelayRoom.Api/wwwroot
+        cp -R src/RelayRoom.Web/dist/. src/RelayRoom.Api/wwwroot/
+      continueOnError: false

@@ -1,0 +1,16 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/RelayRoom.Api/RelayRoom.Api.csproj" />
+    <Project Path="src/RelayRoom.Application/RelayRoom.Application.csproj" />
+    <Project Path="src/RelayRoom.AppHost/RelayRoom.AppHost.csproj" />
+    <Project Path="src/RelayRoom.Core/RelayRoom.Core.csproj" />
+    <Project Path="src/RelayRoom.Infrastructure/RelayRoom.Infrastructure.csproj" />
+    <Project Path="src/RelayRoom.Persistence/RelayRoom.Persistence.csproj" />
+    <Project Path="src/RelayRoom.ServiceDefaults/RelayRoom.ServiceDefaults.csproj" />
+    <Project Path="src/RelayRoom.Worker/RelayRoom.Worker.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/RelayRoom.IntegrationTests/RelayRoom.IntegrationTests.csproj" />
+    <Project Path="tests/RelayRoom.UnitTests/RelayRoom.UnitTests.csproj" />
+  </Folder>
+</Solution>

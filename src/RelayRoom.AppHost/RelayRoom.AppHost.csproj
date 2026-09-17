@@ -1,0 +1,24 @@
+<Project Sdk="Aspire.AppHost.Sdk/13.5.3">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AspireUseCliBundle>true</AspireUseCliBundle>
+    <UserSecretsId>e3df1960-090f-4c18-963f-6669a149a7b5</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.Azure.AppContainers" Version="13.5.3" />
+    <PackageReference Include="Aspire.Hosting.Azure.PostgreSQL" Version="13.5.3" />
+    <PackageReference Include="Aspire.Hosting.Azure.Storage" Version="13.5.3" />
+    <PackageReference Include="Aspire.Hosting.JavaScript" Version="13.5.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\RelayRoom.Api\RelayRoom.Api.csproj" />
+    <ProjectReference Include="..\RelayRoom.Worker\RelayRoom.Worker.csproj" />
+  </ItemGroup>
+
+</Project>

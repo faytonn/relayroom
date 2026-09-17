@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+    <ItemGroup>
+    <ProjectReference Include="..\RelayRoom.Application\RelayRoom.Application.csproj" />
+    <ProjectReference Include="..\RelayRoom.Core\RelayRoom.Core.csproj" />
+    <ProjectReference Include="..\RelayRoom.Infrastructure\RelayRoom.Infrastructure.csproj" />
+    <ProjectReference Include="..\RelayRoom.Persistence\RelayRoom.Persistence.csproj" />
+    <ProjectReference Include="..\RelayRoom.ServiceDefaults\RelayRoom.ServiceDefaults.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.9" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Scalar.AspNetCore" Version="2.9.3" />
+    <PackageReference Include="tusdotnet" Version="2.10.0" />
+  </ItemGroup>
+
+</Project>

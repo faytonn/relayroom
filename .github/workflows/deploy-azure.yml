@@ -1,0 +1,61 @@
+name: Deploy Azure App Service
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: azure-production
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: src/RelayRoom.Web/pnpm-lock.yaml
+
+      - name: Build SPA
+        working-directory: src/RelayRoom.Web
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+
+      - name: Copy SPA into API wwwroot
+        run: |
+          rm -rf src/RelayRoom.Api/wwwroot
+          mkdir -p src/RelayRoom.Api/wwwroot
+          cp -R src/RelayRoom.Web/dist/. src/RelayRoom.Api/wwwroot/
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Test
+        run: |
+          dotnet test tests/RelayRoom.UnitTests/RelayRoom.UnitTests.csproj --configuration Release
+          dotnet test tests/RelayRoom.IntegrationTests/RelayRoom.IntegrationTests.csproj --configuration Release
+
+      - name: Publish API
+        run: dotnet publish src/RelayRoom.Api/RelayRoom.Api.csproj --configuration Release --output artifacts/azure-publish
+
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: relayroom-fayton
+          slot-name: production
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: artifacts/azure-publish
