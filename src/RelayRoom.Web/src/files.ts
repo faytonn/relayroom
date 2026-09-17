@@ -39,6 +39,65 @@ export function formatClock(iso: string): string {
   return date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 }
 
+export function formatRelativeTime(iso: string, now = Date.now()): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+  const seconds = Math.round((now - date.getTime()) / 1000);
+  if (seconds < 10) {
+    return "just now";
+  }
+  if (seconds < 60) {
+    return `${Math.max(0, seconds)}s ago`;
+  }
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) {
+    return minutes === 1 ? "1 min ago" : `${minutes} min ago`;
+  }
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) {
+    return hours === 1 ? "1 hr ago" : `${hours} hr ago`;
+  }
+  const days = Math.floor(hours / 24);
+  if (days < 7) {
+    return days === 1 ? "1 day ago" : `${days} days ago`;
+  }
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+export function formatDuration(totalSeconds: number): string {
+  const seconds = Math.max(0, Math.floor(totalSeconds));
+  const minutes = Math.floor(seconds / 60);
+  return `${minutes}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
+export function isVoiceNoteName(fileName: string | null | undefined): boolean {
+  return !!fileName && /^voice-\d+/i.test(fileName);
+}
+
+export function voiceNoteDurationSeconds(fileName: string | null | undefined): number | null {
+  if (!fileName) {
+    return null;
+  }
+  const match = fileName.match(/^voice-\d+-(\d+)s\./i);
+  return match ? Number(match[1]) : null;
+}
+
+export function displayTransferTitle(transfer: Transfer): string {
+  if (transfer.kind === "Voice" && (isVoiceNoteName(transfer.fileName) || !transfer.fileName)) {
+    const seconds = voiceNoteDurationSeconds(transfer.fileName);
+    return seconds != null ? `Voice message · ${formatDuration(seconds)}` : "Voice message";
+  }
+  if (transfer.kind === "Text") {
+    return transfer.textBody?.slice(0, 80) || "Message";
+  }
+  if (transfer.kind === "Link") {
+    return transfer.textBody ?? "Link";
+  }
+  return transfer.fileName ?? transfer.kind;
+}
+
 export function formatRemaining(expiresAt: string): { label: string; expiring: boolean } {
   const ms = new Date(expiresAt).getTime() - Date.now();
   if (ms <= 0) {

@@ -2,7 +2,17 @@ import { HubConnection, HubConnectionBuilder } from "@microsoft/signalr";
 import QRCode from "qrcode";
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent, type PointerEvent } from "react";
 import { api } from "../api";
-import { formatBytes, formatClock, formatRemaining, isHttpUrl, kindForFile, saveTransfer, uploadFile } from "../files";
+import {
+  displayTransferTitle,
+  formatBytes,
+  formatDuration,
+  formatRelativeTime,
+  formatRemaining,
+  isHttpUrl,
+  kindForFile,
+  saveTransfer,
+  uploadFile,
+} from "../files";
 import { loadSession, saveSession } from "../session";
 import type { ConnectionState, Device, RoomDetail, Session, Transfer } from "../types";
 
@@ -354,14 +364,22 @@ export function RoomPage({ code }: Props) {
     }
   }
 
-  async function copyRoomCode() {
-    const value = (detail?.room.publicCode ?? code).toUpperCase();
+  async function copyValue(value: string) {
     try {
       await navigator.clipboard.writeText(value);
-      showToast("Room code copied");
+      showToast("Copied");
     } catch {
-      setError("Could not copy the room code.");
+      setError("Could not copy.");
     }
+  }
+
+  function copyRoomCode() {
+    return copyValue((detail?.room.publicCode ?? code).toUpperCase());
+  }
+
+  function copyJoinUrl() {
+    const url = detail?.room.joinUrl ?? session?.room.joinUrl ?? `${window.location.origin}/r/${code}`;
+    return copyValue(url);
   }
 
   async function downloadTransfer(transfer: Transfer) {
@@ -373,6 +391,9 @@ export function RoomPage({ code }: Props) {
     }
     try {
       await saveTransfer(transfer, session.accessToken);
+      if (transfer.kind === "Text") {
+        showToast("Copied");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not download the file.");
     }
@@ -471,7 +492,8 @@ export function RoomPage({ code }: Props) {
       if (blob.size === 0) {
         return;
       }
-      const file = new File([blob], `voice-${Date.now()}.webm`, { type: blob.type });
+      const seconds = Math.max(1, Math.round((Date.now() - startedRef.current) / 1000));
+      const file = new File([blob], `voice-${Date.now()}-${seconds}s.webm`, { type: blob.type });
       await sendFile(file, null);
     } finally {
       releaseRecordLock();
@@ -496,6 +518,9 @@ export function RoomPage({ code }: Props) {
         }
         await api.ack(incoming.id, session.accessToken, "Accepted");
         await saveTransfer(incoming, session.accessToken);
+        if (incoming.kind === "Text") {
+          showToast("Copied");
+        }
         await api.ack(incoming.id, session.accessToken, "Completed");
       } else {
         await api.ack(incoming.id, session.accessToken, "Declined");
@@ -516,7 +541,9 @@ export function RoomPage({ code }: Props) {
     [detail?.transfers],
   );
 
-  void now;
+  const roomCode = (detail?.room.publicCode ?? code).toUpperCase();
+  const canSend = !expired && text.trim().length > 0;
+  const connectionTone = expired ? "away" : connection === "Live" ? "live" : connection === "Reconnecting" ? "reconnecting" : "away";
 
   return (
     <main className="page room-page">
@@ -524,16 +551,23 @@ export function RoomPage({ code }: Props) {
         <header className="header">
           <div>
             <div className="brand">RelayRoom</div>
-            <h1 className="room-code">
-              <button type="button" className="room-code-btn" onClick={() => void copyRoomCode()} title="Copy room code">
-                {(detail?.room.publicCode ?? code).toUpperCase()}
+            <h1 className="room-code-heading">
+              <span className="room-code">{roomCode}</span>
+              <button
+                type="button"
+                className="icon-btn"
+                aria-label="Copy room code"
+                title="Copy room code"
+                onClick={() => void copyRoomCode()}
+              >
+                <CopyIcon />
               </button>
             </h1>
           </div>
           <div style={{ textAlign: "right" }}>
             <div className={`timer ${remaining.expiring ? "expiring" : ""}`}>{remaining.label}</div>
-            <div className="status">
-              <span className={`dot ${connection === "Live" ? "live" : connection === "Reconnecting" ? "reconnecting" : ""}`} />
+            <div className={`status is-${connectionTone}`}>
+              <span className={`dot ${connectionTone}`} />
               {expired ? "Expired" : connection}
             </div>
           </div>
@@ -542,20 +576,34 @@ export function RoomPage({ code }: Props) {
         {error ? <p className="error">{error}</p> : null}
         {expired ? <p className="muted">This room has expired. Uploaded files were deleted.</p> : null}
 
-        <details className="panel" open={joinOpen} onToggle={(event) => setJoinOpen(event.currentTarget.open)}>
-          <summary>Join this room</summary>
+        <details className="panel join-panel" open={joinOpen} onToggle={(event) => setJoinOpen(event.currentTarget.open)}>
+          <summary className="join-summary">
+            <span className="join-summary-label">
+              <ShareIcon />
+              Join this room
+            </span>
+          </summary>
           <div className="join-body">
             {qr ? <img className="qr" src={qr} alt="Join QR code" /> : <div className="qr" />}
-            <div>
-              <div className="label">Code</div>
-              <button type="button" className="room-code-btn" onClick={() => void copyRoomCode()} title="Copy room code">
-                <span className="room-code" style={{ fontSize: 22, lineHeight: "28px" }}>
-                  {(detail?.room.publicCode ?? code).toUpperCase()}
-                </span>
-              </button>
-              <p className="muted" style={{ margin: "8px 0 0" }}>
-                {detail?.room.joinUrl ?? session?.room.joinUrl ?? `Open /r/${code}`}
-              </p>
+            <div className="join-share">
+              <div className="label">Room code</div>
+              <div className="room-code-row">
+                <span className="room-code join-code">{roomCode}</span>
+                <button
+                  type="button"
+                  className="icon-btn"
+                  aria-label="Copy room code"
+                  title="Copy room code"
+                  onClick={() => void copyRoomCode()}
+                >
+                  <CopyIcon />
+                </button>
+              </div>
+              <div className="join-actions">
+                <button type="button" className="btn-text join-copy-btn" onClick={() => void copyJoinUrl()}>
+                  Copy join link
+                </button>
+              </div>
             </div>
           </div>
         </details>
@@ -578,17 +626,20 @@ export function RoomPage({ code }: Props) {
                   onDragLeave={() => setDragDeviceId((current) => (current === device.id ? null : current))}
                   onDrop={(event) => onDrop(event, device.id)}
                 >
-                  <span className={`dot ${device.status === "Connected" ? "live" : ""}`} />
+                  <span className={`dot ${device.status === "Connected" ? "live" : "away"}`} />
                   <div className="grow">
                     <div className="row-title">
                       {device.displayName}
                       {device.id === session?.device.id ? " · you" : ""}
                     </div>
                     <div className="row-meta">
-                      {device.kind} · {device.role} · {device.status === "Connected" ? "Live" : "Away"}
+                      {device.kind} · {device.role} ·{" "}
+                      <span className={device.status === "Connected" ? "status-live" : "status-away"}>
+                        {device.status === "Connected" ? "Live" : "Away"}
+                      </span>
                     </div>
                   </div>
-                  {inbound ? (
+                  {inbound && (inbound.uploadPercent ?? 0) < 100 ? (
                     <div className="progress">
                       <span style={{ width: `${inbound.uploadPercent ?? 0}%` }} />
                     </div>
@@ -615,6 +666,7 @@ export function RoomPage({ code }: Props) {
                   key={transfer.id}
                   transfer={transfer}
                   selfId={session?.device.id}
+                  now={now}
                   onDownload={() => void downloadTransfer(transfer)}
                   onRetry={() => void retry(transfer)}
                 />
@@ -681,8 +733,17 @@ export function RoomPage({ code }: Props) {
                 event.target.value = "";
               }}
             />
-            <button className="file-btn" type="button" disabled={expired} onClick={() => fileRef.current?.click()}>
-              File
+            <button
+              className="file-btn"
+              type="button"
+              disabled={expired}
+              aria-label="Attach file"
+              onClick={() => fileRef.current?.click()}
+            >
+              <PaperclipIcon />
+              <span className="file-btn-label">
+                Attach<span className="file-btn-rest"> file</span>
+              </span>
             </button>
             <button
               className={`record-chip ${recording !== null ? "recording" : ""}`}
@@ -699,13 +760,16 @@ export function RoomPage({ code }: Props) {
             >
               <span className="record-dot" />
               <span className="record-label">
-                {recording === null
-                  ? "Hold to record"
-                  : `Release ${String(Math.floor(recording / 60)).padStart(2, "0")}:${String(recording % 60).padStart(2, "0")}`}
+                {recording === null ? "Hold to record" : `Release ${formatDuration(recording)}`}
               </span>
             </button>
             <span className="spacer" />
-            <button className="btn send-btn" type="button" disabled={expired || !text.trim()} onClick={() => void sendText(text, null)}>
+            <button
+              className={`btn send-btn${canSend ? " send-ready" : ""}`}
+              type="button"
+              disabled={!canSend}
+              onClick={() => void sendText(text, null)}
+            >
               Send
             </button>
           </div>
@@ -715,7 +779,7 @@ export function RoomPage({ code }: Props) {
       {incoming && !expired ? (
         <aside className="sheet">
           <div className="label">Incoming from {detail?.devices.find((device) => device.id === incoming.senderDeviceId)?.displayName ?? "a device"}</div>
-          <div className="sheet-filename">{incoming.fileName ?? incoming.textBody ?? incoming.kind}</div>
+          <div className="sheet-filename">{displayTransferTitle(incoming)}</div>
           <div className="row-meta">
             {incoming.kind}
             {incoming.sizeBytes ? ` · ${formatBytes(incoming.sizeBytes)}` : ""}
@@ -821,9 +885,8 @@ function FileTypeIcon({ transfer }: { transfer: Transfer }) {
         ) : null}
         {kind === "text" ? (
           <>
-            <path d="M4 2.5h5.5L12 5v8.5H4z" />
-            <path d="M9.5 2.5V5H12" />
-            <path d="M6 8h4M6 10.2h4M6 12.2h2.4" />
+            <path d="M3.5 4.2h9a1.3 1.3 0 0 1 1.3 1.3v5.2a1.3 1.3 0 0 1-1.3 1.3H7.4L4.4 14.2V12H3.5A1.3 1.3 0 0 1 2.2 10.7V5.5A1.3 1.3 0 0 1 3.5 4.2Z" />
+            <path d="M5.4 7.2h5.2M5.4 9.4h3.4" />
           </>
         ) : null}
         {kind === "link" ? (
@@ -843,40 +906,77 @@ function FileTypeIcon({ transfer }: { transfer: Transfer }) {
   );
 }
 
+function ShareIcon() {
+  return (
+    <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="4.2" cy="8" r="1.4" />
+      <circle cx="11.4" cy="4.2" r="1.4" />
+      <circle cx="11.4" cy="11.8" r="1.4" />
+      <path d="M5.5 7.3 10 4.9M5.5 8.7 10 11.1" />
+    </svg>
+  );
+}
+
+function CopyIcon() {
+  return (
+    <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="5.5" y="5.5" width="7.2" height="8" rx="1.2" />
+      <path d="M10.5 5.5V4.2A1.2 1.2 0 0 0 9.3 3H3.7A1.2 1.2 0 0 0 2.5 4.2v7.1A1.2 1.2 0 0 0 3.7 12.5H5.5" />
+    </svg>
+  );
+}
+
+function PaperclipIcon() {
+  return (
+    <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M6.2 8.6 9.6 5.2a2.2 2.2 0 0 1 3.1 3.1l-5.6 5.6a3.3 3.3 0 0 1-4.7-4.7l5.8-5.8a2.2 2.2 0 1 1 3.1 3.1L6.4 11" />
+    </svg>
+  );
+}
+
 function TransferRow({
   transfer,
   selfId,
+  now,
   onDownload,
   onRetry,
 }: {
   transfer: Transfer;
   selfId?: string;
+  now: number;
   onDownload: () => void;
   onRetry: () => void;
 }) {
-  const title =
-    transfer.fileName ??
-    (transfer.kind === "Link" ? transfer.textBody : transfer.textBody?.slice(0, 80)) ??
-    transfer.kind;
+  const title = displayTransferTitle(transfer);
   const percent = transfer.uploadPercent ?? 0;
-  const clock = formatClock(transfer.createdAt);
+  const processing = transfer.status === "Uploading" && percent >= 100;
   const state =
     transfer.status === "Uploading"
-      ? `Uploading ${percent}%`
+      ? processing
+        ? "Processing…"
+        : percent > 0
+          ? `Uploading ${percent}%`
+          : "Uploading"
       : transfer.status === "Failed"
         ? "Failed"
-        : transfer.status;
+        : transfer.status === "Available"
+          ? "Available"
+          : transfer.status;
+  const relative = formatRelativeTime(transfer.createdAt, now);
+  const meta = [
+    state,
+    relative ? `sent ${relative}` : null,
+    transfer.senderDeviceId === selfId ? "by you" : null,
+    transfer.targetDeviceId ? "to one device" : null,
+  ].filter(Boolean);
 
   return (
-    <div className="row">
+    <div className={`row${transfer.kind === "Text" || transfer.kind === "Link" ? " row-message" : ""}`}>
       <FileTypeIcon transfer={transfer} />
       <div className="grow">
         <div className="row-title">{title}</div>
-        <div className="row-meta">
-          {state}
-          {clock ? ` · ${clock}` : ""}
-          {transfer.targetDeviceId ? " · targeted" : " · room"}
-          {transfer.senderDeviceId === selfId ? " · from you" : ""}
+        <div className="row-meta human-meta">
+          {meta.join(" · ")}
           {transfer.status === "Failed" ? (
             <>
               {" · "}
@@ -889,12 +989,12 @@ function TransferRow({
       </div>
       {transfer.status === "Available" ? (
         <div className="row-actions">
-          <button className="btn-text" type="button" onClick={onDownload}>
+          <button className="btn-text action-btn" type="button" onClick={onDownload}>
             {actionLabel(transfer.kind)}
           </button>
         </div>
       ) : null}
-      {transfer.status === "Uploading" ? (
+      {transfer.status === "Uploading" && !processing ? (
         <div className="progress">
           <span style={{ width: `${percent}%` }} />
         </div>
