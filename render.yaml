@@ -1,0 +1,19 @@
+# Render Blueprint: https://render.com/docs/blueprint-spec
+# Postgres is external (Neon free tier); paste its connection string when Render prompts.
+services:
+  - type: web
+    name: relayroom
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    autoDeploy: true
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      # Render's proxy terminates TLS; trust X-Forwarded-For so per-IP rate limiting sees real clients.
+      - key: ASPNETCORE_FORWARDEDHEADERS_ENABLED
+        value: "true"
+      - key: Jwt__SigningKey
+        generateValue: true
+      - key: ConnectionStrings__relayroom
+        sync: false

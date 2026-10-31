@@ -1,0 +1,10 @@
+**/bin/
+**/obj/
+**/node_modules/
+**/dist/
+src/RelayRoom.Api/wwwroot/
+src/RelayRoom.Api/App_Data/
+.git/
+.github/
+tests/
+artifacts/
